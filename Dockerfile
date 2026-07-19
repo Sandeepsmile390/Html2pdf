@@ -21,6 +21,13 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download static Tailwind CSS to avoid runtime JIT compilation overhead and timeouts
+RUN mkdir -p /app/static && \
+    apt-get update && apt-get install -y --no-install-recommends wget && \
+    wget -O /app/static/tailwind.min.css https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css && \
+    apt-get purge -y --auto-remove wget && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy the rest of the application files
 COPY app.py /app/
 COPY templates/ /app/templates/

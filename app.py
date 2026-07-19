@@ -3,6 +3,7 @@ import sys
 import shutil
 import tempfile
 import subprocess
+import urllib.request
 from pathlib import Path
 from flask import Flask, request, render_template, send_file, jsonify
 
@@ -36,6 +37,65 @@ def find_browser():
             
     return None
 
+def download_static_assets():
+    """Downloads necessary static assets on startup if they don't exist."""
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    os.makedirs(static_dir, exist_ok=True)
+    
+    tailwind_path = os.path.join(static_dir, "tailwind.min.css")
+    if not os.path.exists(tailwind_path):
+        print("Downloading static Tailwind CSS for offline rendering...")
+        url = "https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
+        try:
+            with urllib.request.urlopen(url, timeout=15) as response:
+                with open(tailwind_path, 'wb') as out_file:
+                    out_file.write(response.read())
+            print("Successfully downloaded tailwind.min.css")
+        except Exception as e:
+            print(f"Warning: Could not download tailwind.min.css on startup: {e}")
+
+def optimize_html(html_path):
+    """Optimizes uploaded HTML to render faster in headless Chromium by replacing CDN JIT with local static CSS."""
+    try:
+        if not os.path.exists(html_path):
+            return
+            
+        with open(html_path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+            
+        local_tailwind = os.path.join(os.path.dirname(__file__), "static", "tailwind.min.css")
+        if os.path.exists(local_tailwind):
+            local_tailwind_url = Path(local_tailwind).as_uri()
+            # If the HTML uses cdn.tailwindcss.com, replace it
+            if "cdn.tailwindcss.com" in content:
+                print("Optimizing: Replacing cdn.tailwindcss.com JIT with local static tailwind.min.css")
+                # Disable the CDN script tag
+                content = content.replace(
+                    '<script src="https://cdn.tailwindcss.com"></script>',
+                    '<!-- Disabled Tailwind JIT CDN -->'
+                )
+                content = content.replace(
+                    'src="https://cdn.tailwindcss.com"',
+                    'src="" data-disabled-cdn="true"'
+                )
+                # Inject the local static stylesheet in head
+                if "</head>" in content:
+                    content = content.replace(
+                        "</head>",
+                        f'<link rel="stylesheet" href="{local_tailwind_url}"></head>'
+                    )
+                else:
+                    content = f'<link rel="stylesheet" href="{local_tailwind_url}">' + content
+                    
+                # Write back the optimized HTML
+                with open(html_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+    except Exception as e:
+        print(f"Warning: HTML optimization failed: {e}")
+
+# Download static assets on startup
+download_static_assets()
+
 @app.route('/')
 def index():
     """Renders the main converter interface."""
@@ -67,6 +127,9 @@ def convert():
         safe_filename = "document.html"
         html_path = os.path.join(temp_dir, safe_filename)
         file.save(html_path)
+        
+        # Optimize HTML to use local Tailwind static files and avoid JIT performance timeouts
+        optimize_html(html_path)
         
         # Output PDF path
         pdf_filename = Path(file.filename).with_suffix('.pdf').name
@@ -150,6 +213,9 @@ def convert_safe():
     try:
         html_path = os.path.join(temp_dir, "doc.html")
         file.save(html_path)
+        
+        # Optimize HTML to use local Tailwind static files and avoid JIT performance timeouts
+        optimize_html(html_path)
         
         pdf_path = os.path.join(temp_dir, "doc.pdf")
         file_url = Path(html_path).as_uri()
