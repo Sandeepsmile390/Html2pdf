@@ -141,12 +141,11 @@ def convert():
         # Headless Chromium printing command
         cmd = [
             browser_path,
-            "--headless=new",
+            "--headless",
             "--disable-gpu",
             "--no-sandbox",
             f"--user-data-dir={os.path.join(temp_dir, 'chrome-profile')}",
             "--disable-dev-shm-usage",
-            "--single-process",
             "--no-first-run",
             "--no-default-browser-check",
             "--print-to-pdf-no-header",
@@ -222,12 +221,11 @@ def convert_safe():
         
         cmd = [
             browser_path,
-            "--headless=new",
+            "--headless",
             "--disable-gpu",
             "--no-sandbox",
             f"--user-data-dir={os.path.join(temp_dir, 'chrome-profile')}",
             "--disable-dev-shm-usage",
-            "--single-process",
             "--no-first-run",
             "--no-default-browser-check",
             "--print-to-pdf-no-header",
