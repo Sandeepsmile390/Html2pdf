@@ -82,6 +82,10 @@ def convert():
             "--disable-gpu",
             "--no-sandbox",
             f"--user-data-dir={os.path.join(temp_dir, 'chrome-profile')}",
+            "--disable-dev-shm-usage",
+            "--single-process",
+            "--no-first-run",
+            "--no-default-browser-check",
             "--print-to-pdf-no-header",
             f"--print-to-pdf={pdf_path}",
             file_url
@@ -156,6 +160,10 @@ def convert_safe():
             "--disable-gpu",
             "--no-sandbox",
             f"--user-data-dir={os.path.join(temp_dir, 'chrome-profile')}",
+            "--disable-dev-shm-usage",
+            "--single-process",
+            "--no-first-run",
+            "--no-default-browser-check",
             "--print-to-pdf-no-header",
             f"--print-to-pdf={pdf_path}",
             file_url

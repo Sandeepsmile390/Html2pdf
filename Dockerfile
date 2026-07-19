@@ -28,5 +28,5 @@ COPY templates/ /app/templates/
 # Expose the production port
 EXPOSE 5000
 
-# Run the gunicorn production WSGI server
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+# Run the gunicorn production WSGI server with an extended timeout to allow Chromium rendering time
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "120", "app:app"]
