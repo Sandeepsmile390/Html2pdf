@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+*.pdf
+chrome-profile/
+html_to_pdf_*/
+temp/

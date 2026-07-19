@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelPDF - Instant HTML to High-Fidelity PDF Converter</title>
+    <meta name="description" content="Convert your local HTML documents to high-fidelity PDF prints instantly. Preserves exact background layouts, CSS styles, web fonts, margins, and custom formats.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Core tokens & themes */
+        :root {
+            --bg-color: #0b0a0f;
+            --primary: #8b5cf6; /* Sleek violet */
+            --primary-glow: rgba(139, 92, 246, 0.4);
+            --secondary: #ec4899; /* Pink accent */
+            --secondary-glow: rgba(236, 72, 153, 0.4);
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --card-glow: rgba(0, 0, 0, 0.5);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --error: #ef4444;
+            --success: #10b981;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Outfit', sans-serif;
+        }
+
+        /* Base styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Flowing gradient background blobs */
+        body::before, body::after {
+            content: "";
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: -1;
+            opacity: 0.4;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        body::before {
+            background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+            top: -100px;
+            left: -100px;
+        }
+
+        body::after {
+            background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);
+            bottom: -150px;
+            right: -100px;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+            }
+            50% {
+                transform: translate(50px, 30px) scale(1.1);
+            }
+        }
+
+        /* Layout structure */
+        header {
+            padding: 2.5rem 1.5rem 1rem 1.5rem;
+            text-align: center;
+        }
+
+        .logo-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .logo-icon {
+            font-size: 2.25rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .logo-text {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #d1d5db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tagline {
+            font-size: 1.05rem;
+            color: var(--text-muted);
+            max-width: 550px;
+            margin: 0.5rem auto 0 auto;
+            line-height: 1.5;
+            font-weight: 300;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Premium Glassmorphic Card */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 25px 50px -12px var(--card-glow);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s;
+            position: relative;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Title inside Card */
+        .card-title {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .card-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        /* Drag & Drop Upload Zone */
+        .upload-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 3.5rem 2rem;
+            cursor: pointer;
+            position: relative;
+            background: rgba(255, 255, 255, 0.01);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            outline: none;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.04);
+            box-shadow: inset 0 0 20px rgba(139, 92, 246, 0.05);
+        }
+
+        .upload-zone:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transition: transform 0.3s ease;
+        }
+
+        .upload-zone:hover .upload-icon {
+            transform: translateY(-5px);
+        }
+
+        .upload-text {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #ffffff;
+        }
+
+        .upload-subtext {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Hidden Input File */
+        .file-input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Progress / Converting Mode UI */
+        .process-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 0;
+        }
+
+        /* Beautiful glowing spinner */
+        .spinner-outer {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            padding: 4px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            animation: rotate 1.5s linear infinite;
+            margin-bottom: 2rem;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .spinner-inner {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            border-radius: 50%;
+        }
+
+        @keyframes rotate {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .process-title {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+        }
+
+        .process-step {
+            font-size: 0.85rem;
+            color: var(--primary);
+            height: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            animation: pulse 1.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        /* Success & Failure States */
+        .status-banner {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 1.5rem;
+            text-align: left;
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .status-banner.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .status-banner.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #a7f3d0;
+        }
+
+        @keyframes slideIn {
+            0% {
+                transform: translateY(10px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Selected file banner */
+        .file-selected-banner {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            animation: slideIn 0.3s;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #ffffff;
+            font-weight: 600;
+            max-width: 80%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .remove-file-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.25rem;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .remove-file-btn:hover {
+            color: var(--error);
+        }
+
+        /* Action Buttons */
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            font-family: var(--font-display);
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px var(--primary-glow);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* Footer */
+        footer {
+            padding: 2rem 1.5rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-top: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        footer a:hover {
+            color: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <div class="logo-container">
+            <span class="logo-icon">⚡</span>
+            <h1 class="logo-text" id="logo">PixelPDF</h1>
+        </div>
+        <p class="tagline">Convert HTML documents to A4/Letter size PDFs with 100% preservation of layout, custom web fonts, CSS gradients, backgrounds, and margins.</p>
+    </header>
+
+    <!-- Main Container -->
+    <main>
+        <div class="glass-card">
+            
+            <!-- Default Form Upload Mode -->
+            <div id="upload-container">
+                <h2 class="card-title">Upload HTML Document</h2>
+                <p class="card-desc">Select or drag & drop any .html file to build its PDF</p>
+                
+                <form id="converter-form" enctype="multipart/form-data">
+                    <div class="file-selected-banner" id="file-selected-banner">
+                        <div class="file-info">
+                            <span>📄</span>
+                            <span id="selected-filename">filename.html</span>
+                        </div>
+                        <button type="button" class="remove-file-btn" id="remove-file-btn" title="Remove file">&times;</button>
+                    </div>
+
+                    <div class="upload-zone" id="upload-zone">
+                        <span class="upload-icon">📤</span>
+                        <span class="upload-text">Drag and drop file here</span>
+                        <span class="upload-subtext">or click to browse from files (Only .html)</span>
+                        <input type="file" id="file-input" name="file" class="file-input" accept=".html" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="convert-submit-btn">Convert to PDF</button>
+                </form>
+            </div>
+
+            <!-- Converting Loading Spinner Mode -->
+            <div id="process-container" class="process-container">
+                <div class="spinner-outer">
+                    <div class="spinner-inner"></div>
+                </div>
+                <h3 class="process-title">Generating High-Fidelity PDF</h3>
+                <span class="process-step" id="process-step">Initializing renderer...</span>
+            </div>
+
+            <!-- Output Status Banner -->
+            <div class="status-banner" id="status-banner">
+                <span id="status-icon">⚠️</span>
+                <span id="status-text">Error message description here.</span>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 PixelPDF. Powered by Headless Chromium and Python. Render anywhere.</p>
+    </footer>
+
+    <!-- Interactive Logic -->
+    <script>
+        const form = document.getElementById('converter-form');
+        const fileInput = document.getElementById('file-input');
+        const uploadZone = document.getElementById('upload-zone');
+        const fileBanner = document.getElementById('file-selected-banner');
+        const filenameSpan = document.getElementById('selected-filename');
+        const removeBtn = document.getElementById('remove-file-btn');
+        const submitBtn = document.getElementById('convert-submit-btn');
+
+        const uploadContainer = document.getElementById('upload-container');
+        const processContainer = document.getElementById('process-container');
+        const processStep = document.getElementById('process-step');
+        
+        const statusBanner = document.getElementById('status-banner');
+        const statusIcon = document.getElementById('status-icon');
+        const statusText = document.getElementById('status-text');
+
+        // Drag & Drop visual feedbacks
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+            }, false);
+        });
+
+        // Handle file select/drop
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect(e) {
+            const files = fileInput.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.toLowerCase().endsWith('.html')) {
+                    filenameSpan.textContent = file.name;
+                    fileBanner.style.display = 'flex';
+                    uploadZone.style.display = 'none';
+                    clearStatus();
+                } else {
+                    fileInput.value = '';
+                    showError("Unsupported file type. Please upload an HTML file.");
+                }
+            }
+        }
+
+        // Remove selected file
+        removeBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            fileBanner.style.display = 'none';
+            uploadZone.style.display = 'flex';
+            clearStatus();
+        });
+
+        // Conversion Process step animations
+        const loadingSteps = [
+            "Reading uploaded document...",
+            "Locating headless rendering engine...",
+            "Spinning up Chromium browser...",
+            "Loading stylesheet templates & scripts...",
+            "Fetching web fonts & assets...",
+            "Applying CSS margin and alignment layouts...",
+            "Rendering vectors and gradients...",
+            "Writing print-to-pdf stream...",
+            "Packaging document contents..."
+        ];
+
+        let stepInterval;
+        function startLoadingTextAnimation() {
+            let index = 0;
+            processStep.textContent = loadingSteps[0];
+            stepInterval = setInterval(() => {
+                index = (index + 1) % loadingSteps.length;
+                processStep.textContent = loadingSteps[index];
+            }, 2500);
+        }
+
+        function stopLoadingTextAnimation() {
+            clearInterval(stepInterval);
+        }
+
+        // Show/Clear status messages
+        function showError(msg) {
+            statusBanner.className = "status-banner error";
+            statusIcon.textContent = "❌";
+            statusText.textContent = msg;
+            statusBanner.style.display = "flex";
+        }
+
+        function showSuccess(msg) {
+            statusBanner.className = "status-banner success";
+            statusIcon.textContent = "✅";
+            statusText.textContent = msg;
+            statusBanner.style.display = "flex";
+        }
+
+        function clearStatus() {
+            statusBanner.style.display = "none";
+        }
+
+        // Submit form handler
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (fileInput.files.length === 0) return;
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Toggle view to processing state
+            clearStatus();
+            uploadContainer.style.display = 'none';
+            processContainer.style.display = 'flex';
+            startLoadingTextAnimation();
+
+            try {
+                // Call Flask API endpoint /convert-safe
+                const response = await fetch('/convert-safe', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    // Fetch blob and trigger immediate download
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    
+                    // Match PDF filename from original file name
+                    const origName = file.name;
+                    const pdfName = origName.substring(0, origName.lastIndexOf('.')) + '.pdf';
+                    link.download = pdfName || 'document.pdf';
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(downloadUrl);
+
+                    // Reset views
+                    processContainer.style.display = 'none';
+                    uploadContainer.style.display = 'block';
+                    uploadZone.style.display = 'flex';
+                    fileBanner.style.display = 'none';
+                    fileInput.value = '';
+                    showSuccess("PDF generated successfully and download started!");
+                } else {
+                    // Try to parse json error
+                    const errorJson = await response.json();
+                    throw new Error(errorJson.error || "Server failed to compile the PDF.");
+                }
+            } catch (err) {
+                // Restore upload view and show error
+                processContainer.style.display = 'none';
+                uploadContainer.style.display = 'block';
+                uploadZone.style.display = 'none';
+                fileBanner.style.display = 'flex';
+                showError(err.message || "An unexpected error occurred during printing.");
+            } finally {
+                stopLoadingTextAnimation();
+            }
+        });
+    </script>
+</body>
+</html>
