@@ -37,6 +37,31 @@ def find_browser():
             
     return None
 
+
+def run_browser_command(cmd, timeout=90):
+    """Runs the chromium command in a new process group (on Unix) to ensure all descendant processes are killed on timeout."""
+    import signal
+    kwargs = {}
+    if os.name != 'nt':
+        kwargs['preexec_fn'] = os.setsid
+        
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **kwargs)
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+        return process.returncode, stdout, stderr
+    except subprocess.TimeoutExpired:
+        # Kill the process group to reap all grandchild processes on Unix
+        if os.name != 'nt':
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            except Exception as kill_err:
+                print(f"Failed to kill process group: {kill_err}")
+        else:
+            process.kill()
+            
+        stdout, stderr = process.communicate()
+        raise subprocess.TimeoutExpired(cmd=cmd, timeout=timeout, output=stdout, stderr=stderr)
+
 def download_static_assets():
     """Downloads necessary static assets on startup if they don't exist."""
     static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -149,6 +174,11 @@ def convert():
             "--disable-software-rasterizer",
             "--disable-extensions",
             "--disable-background-networking",
+            "--renderer-process-limit=2",
+            "--enable-low-end-device-mode",
+            "--disable-component-update",
+            "--disable-sync",
+            "--disable-default-apps",
             "--no-first-run",
             "--no-default-browser-check",
             "--print-to-pdf-no-header",
@@ -158,12 +188,12 @@ def convert():
         
         # Run conversion process
         print(f"Running subprocess command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=90)
-        print(f"Subprocess finished with return code: {result.returncode}")
-        if result.stdout:
-            print(f"Subprocess stdout: {result.stdout}")
-        if result.stderr:
-            print(f"Subprocess stderr: {result.stderr}")
+        returncode, stdout, stderr = run_browser_command(cmd, timeout=90)
+        print(f"Subprocess finished with return code: {returncode}")
+        if stdout:
+            print(f"Subprocess stdout: {stdout}")
+        if stderr:
+            print(f"Subprocess stderr: {stderr}")
         
         if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
             # Send file and make sure to clean up the temp directory afterward.
@@ -176,11 +206,17 @@ def convert():
             )
             return response
         else:
-            stderr_msg = result.stderr if result.stderr else "Unknown error during rendering."
+            stderr_msg = stderr if stderr else "Unknown error during rendering."
             return jsonify({'error': f'Rendering failed: {stderr_msg}'}), 500
             
-    except subprocess.TimeoutExpired:
-        return jsonify({'error': 'The conversion process timed out.'}), 504
+    except subprocess.TimeoutExpired as e:
+        print(f"Subprocess timeout expired!")
+        if e.output:
+            print(f"Subprocess stdout (partial): {e.output}")
+        if e.stderr:
+            print(f"Subprocess stderr (partial): {e.stderr}")
+        stderr_msg = e.stderr if e.stderr else ""
+        return jsonify({'error': f'The conversion process timed out. Subprocess stderr: {stderr_msg}'}), 504
     except Exception as e:
         return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
     finally:
@@ -232,6 +268,11 @@ def convert_safe():
             "--disable-software-rasterizer",
             "--disable-extensions",
             "--disable-background-networking",
+            "--renderer-process-limit=2",
+            "--enable-low-end-device-mode",
+            "--disable-component-update",
+            "--disable-sync",
+            "--disable-default-apps",
             "--no-first-run",
             "--no-default-browser-check",
             "--print-to-pdf-no-header",
@@ -240,12 +281,12 @@ def convert_safe():
         ]
         
         print(f"Running subprocess command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=90)
-        print(f"Subprocess finished with return code: {result.returncode}")
-        if result.stdout:
-            print(f"Subprocess stdout: {result.stdout}")
-        if result.stderr:
-            print(f"Subprocess stderr: {result.stderr}")
+        returncode, stdout, stderr = run_browser_command(cmd, timeout=90)
+        print(f"Subprocess finished with return code: {returncode}")
+        if stdout:
+            print(f"Subprocess stdout: {stdout}")
+        if stderr:
+            print(f"Subprocess stderr: {stderr}")
         
         if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
             # Read bytes to memory
@@ -262,10 +303,17 @@ def convert_safe():
                 mimetype='application/pdf'
             )
         else:
-            return jsonify({'error': f'Rendering failed: {result.stderr}'}), 500
+            stderr_msg = stderr if stderr else "Unknown error during rendering."
+            return jsonify({'error': f'Rendering failed: {stderr_msg}'}), 500
             
-    except subprocess.TimeoutExpired:
-        return jsonify({'error': 'Rendering timed out.'}), 504
+    except subprocess.TimeoutExpired as e:
+        print(f"Subprocess timeout expired!")
+        if e.output:
+            print(f"Subprocess stdout (partial): {e.output}")
+        if e.stderr:
+            print(f"Subprocess stderr (partial): {e.stderr}")
+        stderr_msg = e.stderr if e.stderr else ""
+        return jsonify({'error': f'Rendering timed out. Subprocess stderr: {stderr_msg}'}), 504
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
