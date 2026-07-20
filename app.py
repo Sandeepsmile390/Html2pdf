@@ -22,11 +22,6 @@ DEFAULT_WINDOWS_BROWSER_PATHS = [
 
 def find_browser():
     """Finds available Chromium browser executable path cross-platform."""
-    # 0. Check local bin/ directory (portable browser downloaded during build.sh on Render)
-    local_chrome = os.path.join(os.path.dirname(__file__), "bin", "chrome-headless-shell-linux64", "chrome-headless-shell")
-    if os.path.exists(local_chrome):
-        return local_chrome
-
     # 1. On Windows, check standard installation paths
     if os.name == 'nt':
         for path in DEFAULT_WINDOWS_BROWSER_PATHS:
@@ -146,11 +141,14 @@ def convert():
         # Headless Chromium printing command
         cmd = [
             browser_path,
-            "--headless",
+            "--headless=new",
             "--disable-gpu",
             "--no-sandbox",
             f"--user-data-dir={os.path.join(temp_dir, 'chrome-profile')}",
             "--disable-dev-shm-usage",
+            "--disable-software-rasterizer",
+            "--disable-extensions",
+            "--disable-background-networking",
             "--no-first-run",
             "--no-default-browser-check",
             "--print-to-pdf-no-header",
@@ -226,11 +224,14 @@ def convert_safe():
         
         cmd = [
             browser_path,
-            "--headless",
+            "--headless=new",
             "--disable-gpu",
             "--no-sandbox",
             f"--user-data-dir={os.path.join(temp_dir, 'chrome-profile')}",
             "--disable-dev-shm-usage",
+            "--disable-software-rasterizer",
+            "--disable-extensions",
+            "--disable-background-networking",
             "--no-first-run",
             "--no-default-browser-check",
             "--print-to-pdf-no-header",
