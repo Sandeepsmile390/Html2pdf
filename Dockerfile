@@ -23,34 +23,16 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download static Tailwind CSS and handwriting Google Fonts to avoid runtime network dependencies, timeouts, and rendering failures
-RUN mkdir -p /app/static /usr/share/fonts/truetype/google-fonts && \
-    apt-get update && apt-get install -y --no-install-recommends wget unzip && \
+# Pre-download static Tailwind CSS to avoid runtime JIT compilation overhead and timeouts
+RUN mkdir -p /app/static && \
+    apt-get update && apt-get install -y --no-install-recommends wget && \
     wget -q -O /app/static/tailwind.min.css https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css && \
-    wget -q -O /tmp/kalam.zip "https://fonts.google.com/download?family=Kalam" && \
-    unzip -o /tmp/kalam.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    wget -q -O /tmp/caveat.zip "https://fonts.google.com/download?family=Caveat" && \
-    unzip -o /tmp/caveat.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    wget -q -O /tmp/indieflower.zip "https://fonts.google.com/download?family=Indie+Flower" && \
-    unzip -o /tmp/indieflower.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    wget -q -O /tmp/architects.zip "https://fonts.google.com/download?family=Architects+Daughter" && \
-    unzip -o /tmp/architects.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    wget -q -O /tmp/patrick.zip "https://fonts.google.com/download?family=Patrick+Hand" && \
-    unzip -o /tmp/patrick.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    wget -q -O /tmp/gochihand.zip "https://fonts.google.com/download?family=Gochi+Hand" && \
-    unzip -o /tmp/gochihand.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    wget -q -O /tmp/shadows.zip "https://fonts.google.com/download?family=Shadows+Into+Light" && \
-    unzip -o /tmp/shadows.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    wget -q -O /tmp/justme.zip "https://fonts.google.com/download?family=Just+Me+Again+Down+Here" && \
-    unzip -o /tmp/justme.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    wget -q -O /tmp/covered.zip "https://fonts.google.com/download?family=Covered+By+Your+Grace" && \
-    unzip -o /tmp/covered.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    wget -q -O /tmp/gloria.zip "https://fonts.google.com/download?family=Gloria+Hallelujah" && \
-    unzip -o /tmp/gloria.zip -d /usr/share/fonts/truetype/google-fonts/ && \
-    rm -rf /tmp/*.zip && \
-    fc-cache -fv && \
-    apt-get purge -y --auto-remove wget unzip && \
+    apt-get purge -y --auto-remove wget && \
     rm -rf /var/lib/apt/lists/*
+
+# Copy pre-downloaded handwriting fonts to container system font folder and refresh cache
+COPY fonts/ /usr/share/fonts/truetype/google-fonts/
+RUN fc-cache -fv
 
 # Copy the rest of the application files
 COPY app.py /app/
